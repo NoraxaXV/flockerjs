@@ -12,7 +12,6 @@
       enable = true;
   };
   packages = [ 
-    pkgs.neovim
     pkgs.git 
   ];
   cachix.enable = false;

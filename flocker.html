@@ -1,0 +1,1486 @@
+ <html>
+ <head>
+ <title>Flocking Killers</title>
+ 
+ <style>
+ 
+ input#commandLine
+ {
+ position: relative;
+ top: 2;
+ width: 100%;
+ height: 4%;
+ font: 30px courier;
+ background-color: black;
+ }
+ 
+ input#clear
+ {
+ position: relative;
+ top: 0;
+ left: 0;
+ width: 400;
+ height: 30;
+ font: 25px courier;
+ }
+ .pauseGame{
+ width:100;
+ height:100;
+ }
+ 
+ div#console{
+ background-color: black;
+ width: 100%;
+ }
+ p#error
+ {
+ font: 25px courier;
+ color: white;
+ }
+ 
+ </style>
+ </head>
+ 
+ <body>
+ <h1 id="title"><em>Kill Or Be Killed</em></h1>
+ 
+ <canvas id="canvas" width="800" height="800"></canvas>
+ <input type="button" id="toggleDebug" value="Toggle console"></input>
+ 
+ <div id="console">
+ 
+ <p id="error">Error in debug init</p> 
+ 
+ <input type="button" id="clear" value="clear"></input>
+ <input id="pause" type="button" class="pauseGame" value="pause"></input>
+ <div id="logs"></div>
+ <input type="text" id="commandLine"</input>
+ 
+ </div>
+ 
+ <script>
+ 
+ window.onerror=function(errorMsg, url, lineNum)
+ {
+ alert("FATAL:(line "+lineNum+")\n "+errorMsg);
+ 
+ if(window.stack){
+ alert(stack);
+ }
+ 
+ if(log){
+ log("FATAL:(line "+lineNum+")\n "+errorMsg+"   url="+url);
+ 
+ if(window.stack){
+ log(stack);
+ }
+ 
+ }
+ stack=undefined;
+ }
+ </script>
+ 
+ 
+ <script>
+ var Cardinal=(function(){
+ var consoleDiv=document.getElementById("console");
+ var debugStr="";
+ var debugConsole=document.getElementById("logs");
+ 
+ var errorLog=document.getElementById("error");
+ 
+ var errorStr="";
+ 
+ var debugModeOn=true;
+ var commands={};
+ 
+ var debugObj={};
+ 
+ debugObj.getDebugMode=function(){
+ return debugModeOn;
+ };
+ 
+ var currScript="debug";
+ var loadedScripts=["debug"];
+ 
+ function enableDebug()
+ {
+ debugModeOn=true;
+ consoleDiv.style.visibility="visible";
+ }
+ 
+ function disableDebug()
+ {
+ debugModeOn=false;
+ consoleDiv.style.visibility="hidden";
+ }
+ debugObj.setError=function(msg)
+ {
+ errorStr=msg;
+ if(debugModeOn){
+ errorLog.innerHTML=msg;
+ }
+ }
+ 
+ //---log
+ debugObj.log=function(msg)
+ {
+ var logMsg=currScript+"\\"+msg
+ debugStr+=logMsg;
+ var pMsg=document.createElement("p");
+ pMsg.innerHTML=logMsg;
+ pMsg.style.font="20 px courier";
+ pMsg.style.color="lightgreen";
+ debugConsole.appendChild(pMsg);
+ }
+ 
+ debugObj.logObject=function(o,level)
+ {
+ this.log(o+"{");
+ for(var prop in o)
+ {
+ this.log(prop+"="+o[prop]);
+ }
+ this.log("}");
+ };
+ 
+ debugObj.alert=function(msg)
+ {
+ if(debugModeOn){
+ alert(currScript+":\n"+msg);
+ }
+ };
+ 
+ 
+ function logCmdLn(msg)
+ {
+ var logMsg=">>>"+msg
+ var pMsg=document.createElement("p");
+ pMsg.innerHTML=logMsg;
+ pMsg.style.color="lightblue";
+ debugConsole.appendChild(pMsg);
+ }
+ 
+ debugObj.clearLog=function()
+ {
+ while(debugConsole.children[0]){
+ debugConsole.removeChild(debugConsole.children[0]);
+ }
+ };
+ 
+ debugObj.setDebugOn=function(modeBool)
+ {
+ if(typeof modeBool=="boolean"){
+ 
+ if(modeBool)
+ {enableDebug();} 
+ else 
+ {disableDebug();}
+ 
+ }
+ else {
+ enableDebug();
+ this.log("WARNING: (setDebugMode) val is not a valid bool, "+modeBool);
+ }
+ 
+ };
+ 
+ debugObj.addScript=function(s)
+ {
+ currScript=s;
+ loadedScripts.push(s);
+ };
+ 
+ debugObj.require=function(req)
+ {
+ var sucess=true;
+ 
+ req.forEach(function(x)
+ {
+ if(loadedScripts.indexOf(x)==-1)
+ {
+ this.log("FATAL: "+currScript+" is missing "+x);
+ sucess=false;
+ Crash();
+ }
+ });
+ 
+ return sucess;
+ };
+ 
+ debugObj.addCommand=function(n,f){
+ commands[n]=f;
+ };
+ 
+ debugObj.getCommands=function(){
+ var comList=[];
+ 
+ for(var command in commands){
+ comList.push(command);
+ }
+ 
+ comList[0]="#"+comList[0];
+ return comList.join(", #");
+ };
+ 
+ document.getElementById("toggleDebug").onclick=function()
+ {
+ debugObj.setDebugOn(!debugModeOn);
+ }
+ 
+ document.getElementById("clear").onclick=function()
+ {
+ debugObj.clearLog();
+ };
+ 
+ var cmdln=document.getElementById("commandLine");
+ cmdln.style.color="lightblue";
+ cmdln.onchange=function(){
+ var val=this.value.trim();
+ var char=val[0];
+ var cmdStr=val.slice(1);
+ log("cmdStr="+cmdStr);
+ var fullCmd=cmdStr.split(" ");
+ var par=fullCmd.splice(1,fullCmd.length-1);
+ switch(char){
+ case "#":{
+ 
+ logCmdLn(cmdStr);
+ 
+ if(commands[fullCmd[0]]){
+ 
+ commands[fullCmd[0]](par);
+ }
+ else{
+ alert("InvalidCommandError: command "+val+" is not on the list of valid commands.");
+ }
+ break;
+ }
+ case "_": {
+ logCmdLn(val.slice(1));
+ eval("debugObj.logObject("+val.slice(1)+", 2);");
+ break;
+ }
+ case "$":{
+ logCmdLn(val.slice(1));
+ eval(val.slice(1));
+ break;
+ }
+ 
+ default:{
+ logCmdLn(val);
+ try{
+ eval("log("+this.value+")");
+ }
+ catch(e){
+ log(e.stack);
+ log("Command="+this.value);
+ throw e;
+ }
+ }
+ 
+ }
+ };
+ 
+ debugObj.setDebugOn(debugModeOn);
+ 
+ return debugObj;
+ })();
+ 
+ var log=Cardinal.log;
+ 
+ Cardinal.setError("CONSOLE");
+ </script>
+ 
+ <script>
+ 
+ function vec(x,y){
+ this.x=x;
+ this.y=y;
+ };
+ 
+ vec.prototype.equal=function(other){
+ if(other.x==this.x&&other.y==this.y){
+ return true;
+ }
+ return false;
+ };
+ 
+ vec.prototype.log=function(){
+ log(Math.round(this.x)+", "+Math.round(this.y));
+ return this;
+ };
+ 
+ vec.prototype.getCopy=function(){
+ var c=new vec();
+ c.x=this.x; c.y=this.y;
+ return c;
+ };
+ 
+ vec.prototype.add=function(val){
+ var r=this.getCopy();
+ if(typeof val==="number"){
+ r.x+=val;
+ r.y+=val;
+ }
+ else if(val instanceof vec){
+ r.x+=val.x;
+ r.y+=val.y;
+ }
+ 
+ return r;
+ };
+ 
+ vec.prototype.scale=function(val){
+ var r=this.getCopy();
+ if(typeof val==="number"){
+ if(val===0){
+ return new vec(0,0);
+ }
+ else if(val===1){
+ return r;
+ }
+ else{
+ r.x*=val;
+ r.y*=val;
+ return r;
+ }
+ }
+ else if(val instanceof vec){
+ r.x*=val.x;
+ r.y*=val.y;
+ return r;
+ }
+ 
+ };
+ 
+ vec.sub=function(a,b){
+ var v=new vec();
+ v.x=a.x-b.x;
+ v.y=a.y-b.y;
+ return v;
+ };
+ 
+ vec.sum=function(points){
+ var sum=new vec(0,0);
+ for(var i=0;i<points.length;i++){
+ sum=sum.add(points[i]);
+ }
+ sum.scale(1/points.length);
+ return sum;
+ };
+ 
+ vec.prototype.getLength=function(){
+ 
+ var x=Math.abs(this.x);
+ var y=Math.abs(this.y);
+ 
+ if(x===0 && y===0){
+ return 0;
+ }
+ else if((x===0 && y===1) || (x===1 && y===0)){
+ return 1;
+ }
+ 
+ if(x==0 && y!=0){
+ return Math.sqrt(y*y);
+ }
+ 
+ else if(y==0 && x!=0){
+ return Math.sqrt(x*x);
+ }
+ 
+ else{
+ var d=(this.x*this.x)+(this.y*this.y);
+ return Math.sqrt(d);
+ }
+ };
+ 
+ vec.prototype.getUnitVec=function(){
+ if(this.x==0 && this.y==0){
+ return this;
+ };
+ 
+ return this.scale(1/this.getLength());
+ };
+ 
+ vec.prototype.setLength=function(val){
+ 
+ if(this.x==0 && this.y==0){
+ return this;
+ };
+ 
+ return this.scale(val/this.getLength());
+ }
+ 
+ vec.dotP=function(u,v){
+ return u.x*v.x+u.y*v.y;
+ };
+ 
+ function outOfBounds(x,y){
+ if(x>800 || x<0 || y>800 || y<0){
+ return true;
+ }
+ 
+ return false;
+ };
+ 
+ var ctx=(function(){
+ var canvas=document.getElementById("canvas");
+ var self=canvas.getContext("2d");
+ 
+ 
+ self.circle=function(x,y,r,fill){
+ 
+ self.beginPath();
+ self.arc(x,y,r,0,Math.PI*2,false);
+ 
+ if(fill){self.fill();}
+ else{self.stroke();}
+ 
+ };
+ 
+ self.line=function(xs,ys,xe,ye){
+ self.beginPath();
+ self.moveTo(xs,ys);
+ self.lineTo(xe,ye);
+ self.stroke();
+ };
+ 
+ self.pointSize=1;
+ self.plotPoint=function(x,y){
+ self.circle(x,y,self.pointSize,true);
+ 
+ };
+ 
+ self.background=function(color){
+ self.fillStyle=color;
+ self.clearRect(0,0,self.canvas.width,self.canvas.height);
+ self.fillRect(0,0,self.canvas.width,self.canvas.height);
+ };
+ 
+ return self;
+ })();
+ </script>
+ 
+ <script>
+ var CellGrid=(function(){
+ var self=new Array();
+ 
+ self.cellSize=100;
+ self.res=ctx.canvas.height/self.cellSize;
+ 
+ for(var cell=0;cell<self.res*self.res;cell++){
+ self.push(new Array());
+ }
+ log("CellGrid.length="+self.length)
+ self.draw=function(){
+ 
+ for(var i=0;i<self.length;i++){
+ 
+ ctx.fillStyle="rgba(0,0,255,"+
+ (self[i].length/30)+")";
+ ctx.fillRect(
+ (i%self.res)*self.cellSize+0.1,
+ self.cellSize*Math.floor(i/self.res)+0.1,
+ self.cellSize-0.1,
+ self.cellSize-0.1
+ );
+ ctx.lineWidth=0.1;
+ ctx.strokeStyle="blue";
+ ctx.strokeRect(
+ (i%self.res)*self.cellSize+0.1,
+ self.cellSize*Math.floor(i/self.res),
+ self.cellSize,
+ self.cellSize-0.1
+ );
+ }
+ 
+ };
+ 
+ self.remove=function(boid){
+ 
+ var bInd;
+ 
+ bInd=self[boid.cellPos].indexOf(boid);
+ var temp=null;
+ 
+ if(bInd!==-1){
+ temp=this[boid.cellPos][0];
+ temp=this[boid.cellPos][0];
+ this[boid.cellPos][0]=this[bInd];
+ this[boid.cellPos][bInd]=temp;
+ this[boid.cellPos].shift();
+ }
+ 
+ };
+ 
+ self.add=function(boid,pos){
+ 
+ try{
+ if(pos && boid){
+ this[pos].push(boid);
+ }
+ }
+ catch(e){
+ Error.captureStackTrace(window,e);
+ throw e;
+ }
+ 
+ 
+ };
+ 
+ self.getCellPos=function(pos){
+ cellPos=0;
+ 
+ if(outOfBounds(pos.x,pos.y)){
+ return -1;
+ }
+ 
+ cellPos=Math.floor(pos.y/self.cellSize)*self.res+Math.floor(pos.x/self.cellSize);
+ 
+ return cellPos;
+ };
+ 
+ self.getBoids=function(x,y,r){
+ var boids=[];
+ 
+ var tl=new vec(Math.floor(x-r),Math.floor(y-r));
+ var br=new vec(Math.floor(x+r),Math.floor(y+r));
+ var currPos=new vec(tl.x,tl.y);
+ 
+ var lastCellAdded=-1;
+ var cellToAdd=0;
+ 
+ for(var cy=tl.y; cy<=br.y; cy+=self.cellSize){
+ 
+ for(var cx=tl.x; cx<=br.x; cx+=self.cellSize){
+ 
+ currPos.x=cx;
+ currPos.y=cy;
+ 
+ cellToAdd=self.getCellPos(currPos);
+ 
+ if(cellToAdd===lastCellAdded || cellToAdd===-1){
+ continue;
+ }
+ 
+ boids=boids.concat(self[cellToAdd]);
+ lastCellAdded=cellToAdd;
+ }
+ }
+ 
+ return boids;
+ };
+ 
+ self.updateBoid=function(boid){
+ var oldPos=boid.cellPos;
+ var newPos=self.getCellPos(boid.pos);
+ 
+ if(oldPos!==newPos){
+ self.remove(boid);
+ boid.cellPos=newPos;
+ self.add(boid,newPos);
+ }
+ 
+ };
+ 
+ return self;
+ })();
+ log("CellGrid init");
+ </script>
+ 
+ <script>
+ var Flocker=(function(){
+ self={};
+ self.flocks=[];
+ self.foodChain=["fire","ice","acid","shadow"];
+ 
+ function Flock(
+ numBoids,color,powerLevel,baseSight,baseSpeed,baseTurnSpeed){
+ 
+ var id=Flocker.flocks.push(this)-1;
+ 
+ this.getId=function(){
+ return Flocker.flocks.indexOf(this);
+ };
+ 
+ this.numMembers=0;
+ this.members=[];
+ this.boidType=powerLevel;
+ this.powerLevel=Flocker.foodChain.indexOf(powerLevel);
+ 
+ this.color=color;
+ 
+ this.baseSpeed=baseSpeed;
+ this.baseTurnSpeed=baseTurnSpeed;
+ 
+ this.baseSight=baseSight;
+ 
+ for(var i=0;i<numBoids;i++){
+ this.addNewBoid();
+ }
+ 
+ };//end Flock
+ 
+ Flock.prototype.addNewBoid=function(){
+ 
+ var boid=new Boid(
+ this.members.length,
+ this,
+ this.baseSight,
+ this.baseSpeed,
+ this.baseTurnSpeed
+ );
+ 
+ this.numMembers=this.members.push(boid);
+ return boid;
+ };
+ 
+ Flock.prototype.remove=function(boid){
+ 
+ var bInd=this.members.indexOf(boid);
+ 
+ var temp=null;
+ 
+ if(bInd!==-1){
+ this.numMembers--;
+ temp=this.members[0];
+ this[0]=this.members[bInd];
+ this.members[bInd]=temp;
+ this.members.shift();
+ }
+ 
+ 
+ };
+ 
+ Flock.prototype.update=function(){
+ 
+ for(var i=0;i<this.members.length;i++){
+ 
+ b=this.members[i];
+ 
+ if(!b.FlockIt){
+ return;
+ }
+ 
+ try{
+ b.FlockIt();
+ }
+ catch(error){
+ 
+ if(error.message==="dead"){
+ this.remove(b);
+ if(this.members.length===0){
+ throw error;
+ }
+ }
+ else{
+ throw error;
+ }
+ 
+ }
+ 
+ }
+ 
+ };//end Flock.update
+ 
+ Flock.prototype.move=function(){
+ 
+ var self=this;
+ this.members.forEach(function(b,i){
+ b.move();
+ });
+ 
+ 
+ };//end Flock.move
+ 
+ var randomizeVal=function(val,low,high){
+ val+=(Math.random()*(high-low))+low;
+ return val;
+ };
+ 
+ 
+ function Boid(id,flock,pRng,speed,turnSpeed){
+ 
+ this.flock=flock;
+ 
+ var id=id;
+ this.getId=function(){
+ if(this.flock.members.indexOf(this)===-1){
+ return "?";
+ }
+ return this.flock.members.indexOf(this);
+ };
+ 
+ this.getName=function(){
+ this.name=flock.color+" "+this.getId();
+ return this.name;
+ };
+ this.name=flock.color+" "+this.getId();
+ 
+ //Get random pos
+ var x=Math.round(Math.random()*800);
+ var y=Math.round(Math.random()*800);
+ this.pos=new vec(x,y);
+ this.cellPos=0;
+ //Get rand velocity
+ var vx=Math.round(Math.random()*20)-10;
+ 
+ var vy=Math.round(Math.random()*20)-10;
+ this.vel=new vec(vx,vy);
+ this.accel=new vec(0,0);
+ this.speed=speed;
+ this.turnSpeed=turnSpeed;
+ 
+ this.avoidObs=randomizeVal(6,-1,4);
+ this.avoidEnemies=randomizeVal(1,-0.5,3);
+ this.seperate=randomizeVal(1,-0.5,1);
+ this.align=randomizeVal(1,-0.5,1);
+ this.cohese=randomizeVal(1,-0.5,1);
+ 
+ var sightRange=randomizeVal(pRng,-50,50);
+ 
+ this.getSightRange=function(){
+ return sightRange;
+ };
+ 
+ 
+ this.numFriends=0;
+ this.numEnemies=0;
+ this.visibleFriends=[];
+ this.visibleEnemies=[];
+ 
+ this.reproduceTimer=50;
+ 
+ this.nearestFriend={
+ target: null,
+ dist: -1
+ };
+ 
+ this.nearestEnemy={
+ target: null,
+ dist: -1
+ };
+ 
+ this.nearestPrey={
+ target: null,
+ dist: -1,
+ index: -1
+ };
+ 
+ this.maxHunger=300;
+ this.hunger=this.maxHunger/6;
+ this.hungry=false;
+ this.starveTimer=this.maxHunger/3;
+ this.alive=true;
+ };
+ 
+ Boid.prototype.reproduce=function(){
+ 
+ this.reproduceTimer-=5;
+ 
+ if(this.reproduceTimer<=0 && this.flock.members.length<30){
+ this.reproduceTimer=100;
+ //log(this.getName()+" reproduced");
+ var b=this.flock.addNewBoid();
+ b.pos.x=randomizeVal(this.pos.x,-30,30);
+ b.pos.y=randomizeVal(this.pos.y,-30,30);
+ b.bindToWorld();
+ CellGrid.updateBoid(b);
+ }
+ 
+ 
+ };
+ 
+ Boid.prototype.eat=function(p){
+ 
+ var hungerVal=Math.floor(Math.random()*this.maxHunger);
+ 
+ p.die();
+ this.hunger+=(p.flock.powerLevel+1)*30;
+ 
+ log(this.getName()+" eats "+p.getName()+", hunger="+this.hunger+" (hungerVal="+hungerVal+")");
+ 
+ 
+ if(hungerVal<this.hunger){
+ this.starveTimer=this.maxHunger/3;
+ this.hungry=false;
+ log(this.getName()+" is full.It gained "+this.hunger+" power levels.");
+ this.hunger=this.maxHunger;
+ }
+ };
+ 
+ Boid.prototype.checkForStarvation=function(){
+ 
+ if(this.hunger>0){
+ this.hunger--;
+ return;
+ }
+ this.starveTimer--;
+ 
+ if(this.starveTimer<=0){
+ 
+ this.die();
+ //log(this.getName()+" starved.");
+ throw new Error("dead");
+ }
+ 
+ };
+ 
+ Boid.prototype.FindFood=function(){
+ 
+ var p=this.nearestPrey.target;
+ var v=new vec(0,0);
+ 
+ if(this.hungry){
+ 
+ if(p){
+ v=vec.sub(p.pos,this.pos);
+   
+ if(vec.dotP(v,v)<81){
+ this.eat(p);
+ } 
+ v=v.setLength(5);
+ }
+ else{
+ this.checkForStarvation();
+ }
+ 
+ }
+ else{
+ this.hunger--;
+ if(this.hunger<=0){
+ //log(this.getName()+" is hungry");
+ this.hunger=0;
+ this.hungry=true;
+ }
+ 
+ }
+ return v;
+ };
+ 
+ Boid.prototype.FleeEnemies=function(){
+ var newDir=new vec(0,0);
+ 
+ if(this.nearestEnemy.target){
+ newDir=vec.sub(this.pos,this.nearestEnemy.target.pos);
+ 
+ return newDir.scale(this.avoidEnemies/newDir.getLength());
+ 
+ }
+ 
+ return newDir;
+ };
+ 
+ Boid.prototype.KeepDist=function(){
+ var v=new vec(0,0);
+ 
+ if(this.nearestFriend.target){
+ v=vec.sub(this.pos,this.nearestFriend.target.pos);
+ }
+ 
+ return v;
+ };
+ 
+ Boid.prototype.MatchHeading=function(){
+ 
+ if(this.nearestFriend.target){
+ return this.nearestFriend.target.vel;
+ }
+ else{
+ return new vec(0,0);
+ }
+ };
+ 
+ Boid.prototype.SteerToCenter=function(){
+ 
+ if(this.visibleFriends.length===0){
+ return new vec(0,0);
+ }
+ 
+ var avgPos=new vec(0,0);
+ for(var i=0; i<this.visibleFriends.length;i++){
+ 
+ avgPos=avgPos.add(this.visibleFriends[i].pos);
+ }
+ 
+ avgPos=avgPos.scale(1/this.numFriends);
+ 
+ avgPos=vec.sub(avgPos,this.pos);
+ return avgPos;
+ };
+ 
+ Boid.prototype.BuildVisiblityList=function(){
+ 
+ this.visibleFriends=[];
+ this.visibleEnemies=[];
+ 
+ this.nearestFriend={
+ target: null,
+ dist: -1
+ };
+ 
+ this.nearestEnemy={
+ target: null,
+ dist: -1
+ };
+ 
+ this.nearestPrey={
+ target: null,
+ dist: -1,
+ index: -1
+ };
+ 
+ 
+ 
+ var x=this.pos.x;
+ var y=this.pos.y;
+ var r=this.getSightRange();
+ var isFriend=false;
+ 
+ var boids=CellGrid.getBoids(x,y,r);
+ 
+ if(boids.length<=1){
+ return;
+ }
+ 
+ for(var i=0;i<boids.length;i++){
+ currBoid=boids[i];
+ if(!currBoid){
+ continue;
+ }
+ isFriend=currBoid.flock.getId()===this.flock.getId();
+ 
+ if(
+   (currBoid.getId()===this.getId() && isFriend)
+   || !currBoid.alive
+ ){
+ continue;
+ }
+ 
+ var dist=this.canISee(currBoid);
+ 
+ if(dist<r*r && dist!==-1){
+ 
+ if(isFriend){
+ //log(this.getName()+" added "+currBoid.getName()+" as a friend.");
+ 
+ this.addFriend(currBoid,dist);
+ }
+ else{
+ //log(this.getName()+" added "+currBoid.getName()+" as a hated.");
+ 
+ this.addEnemy(currBoid,dist);
+ }
+ 
+ }
+ 
+ }//end for
+ 
+ 
+ if(this.visibleFriends.length>0 && this.flock.powerLevel===0){
+ this.reproduce();
+ }
+ 
+ };
+ 
+ Boid.prototype.addFriend=function(boid,dist){
+ 
+ this.numFriends=this.visibleFriends.push(boid);
+ 
+ if(dist<this.nearestFriend.dist || this.nearestFriend.dist===-1){
+ this.nearestFriend.target=boid;
+ this.nearestFriend.dist=dist;
+ }
+ 
+ };
+ 
+ Boid.prototype.addEnemy=function(boid,dist){
+ 
+ 
+ if(boid.flock.powerLevel<this.flock.powerLevel  && (dist<this.nearestPrey.dist || this.nearestPrey.dist===-1) && this.hungry){
+ 
+ this.setPrey(boid,dist);
+ }
+ else{
+ this.numEnemies=this.visibleEnemies.push(boid);
+ 
+ if(dist<this.nearestEnemy.dist || this.nearestEnemy.dist===-1){
+ this.nearestEnemy.target=boid;
+ this.nearestEnemy.dist=dist;
+ }
+ 
+ }
+ 
+ };
+ 
+ 
+ Boid.prototype.bindToWorld=function(){
+ 
+ if(this.pos.x>800){
+ this.pos.x=1;
+ }
+ else if(this.pos.x<0){
+ this.pos.x=799;
+ }
+ if(this.pos.y>800){
+ this.pos.y=1;
+ }
+ else if(this.pos.y<0){
+ this.pos.y=799;
+ }
+ };
+ 
+ Boid.prototype.AvoidWalls=function(){
+ var newDir=new vec(0,0);
+ var coll=circleCast(5,this);
+ if(coll!==false){
+ newDir=vec.sub(this.pos,coll[0]);
+ 
+ return newDir.setLength(this.avoidObs);
+ };
+ return newDir;
+ };
+ 
+ function circleCast(minVal,self){
+ 
+ var radius=self.getSightRange();
+ var d=0;
+ var a=0;
+ ctx.pointSize=1;
+ var collPoints=[];
+ 
+ for(var i=0; i<750; i++){
+ 
+ d=i/(749);
+ a=2*Math.PI+1.618*i;
+ 
+ if(d*radius*2>minVal){
+ x=Math.cos(a)*radius*d+self.pos.x;
+ y=Math.sin(a)*radius*d+self.pos.y;
+ 
+ if(outOfBounds(x,y)){
+ collPoints.push(new vec(x,y));
+ }
+ else{
+ 
+ for(var j=0;j<Flocker.obstacles.length;j++){
+ 
+ if(Flocker.obstacles[j].checkColl(x,y)){
+ collPoints.push(new vec(x,y));
+ 
+ }//end if
+ 
+ }//end for
+ 
+ }//end else
+ }
+ }//end for
+ 
+ if(collPoints.length>0){
+ return collPoints;
+ }
+ else{
+ return false;
+ }
+ 
+ };
+ 
+ 
+ Boid.prototype.canISee=function(boid){
+ 
+ var toBoid=vec.sub(boid.pos,this.pos);
+ var dist=vec.dotP(toBoid,toBoid);
+ var sight=this.getSightRange();
+ if(dist>sight*sight){
+ return -1;
+ }
+ 
+ return dist;
+ };
+ 
+ Boid.prototype.die=function(){
+ 
+ CellGrid.remove(this);
+ this.alive=false;
+ };
+ 
+ Boid.prototype.setPrey=function(f,dist){
+ 
+ 
+ this.nearestPrey.target=f;
+ this.nearestPrey.dist=dist;
+ };
+ 
+ Boid.prototype.FlockIt=function(){
+ if(!this.alive){
+ throw new Error("dead");
+ return;
+ }
+ 
+ /*
+ log("##---"+this.flock.color+" "+this.getId());
+ this.pos.log();
+ this.vel.log();
+ this.accel.log();
+ log("speed="+this.speed);
+ log("    avoidObs="+this.avoidObs);
+ log("    avoidEnemies="+this.avoidEnemies);
+ log("    seperate="+this.seperate);
+ log("    align="+this.align);
+ log("    cohese="+this.cohese);
+ */
+ 
+ var newVel=new vec(0,0);
+ this.BuildVisiblityList();
+ 
+ //Center Nudge
+ var center=new vec(400,400);
+ newVel=newVel.add(vec.sub(center,this.pos).setLength(0.1));
+ 
+ //Eat food
+ newVel=newVel.add(this.FindFood());
+ 
+ //Avoidance
+ var newVel=newVel.add(this.AvoidWalls());
+ 
+ newVel=newVel.add(this.FleeEnemies());
+ 
+ 
+ //Seperation
+ newVel=newVel.add(this.KeepDist().setLength(this.seperate));
+ 
+ //Alignment
+ newVel=newVel.add(this.MatchHeading().setLength(this.align));
+ 
+ //Cohesion
+ newVel=newVel.add(this.SteerToCenter().setLength(this.cohese));
+ 
+ //Constrain Acceleration
+ var aLength=vec.dotP(newVel,newVel);
+ 
+ if(aLength>this.turnSpeed*this.turnSpeed){
+ newVel=newVel.scale(this.turnSpeed/aLength);
+ }
+ 
+ this.accel=newVel;
+ 
+ var t=1;
+ this.vel.x+=newVel.x*t;
+ this.vel.y+=newVel.y*t;
+ 
+ var velLength=vec.dotP(this.vel,this.vel)
+ 
+ if(velLength>this.speed*this.speed){
+ this.vel=this.vel.setLength(this.speed);
+ }
+ 
+ };
+ 
+ Boid.prototype.move=function(){ 
+ 
+ if(!this.alive){
+ //log(this.getName()+" is dead.");
+ return;
+ }
+ 
+ //Update Pos
+ var t=1/(Game.timeDelta+1);
+ 
+ this.pos.x+=this.vel.x*t+this.accel.x*t*t;
+ this.pos.y+=this.vel.y*t+this.accel.y*t*t;
+ 
+ this.bindToWorld();
+ CellGrid.updateBoid(this);
+ 
+ ctx.pointSize=5;
+ ctx.fillStyle=this.flock.color;
+ ctx.strokeStyle="Black";
+ var pointer=this.vel.getCopy();
+ pointer.x+=this.accel.x*t;
+ pointer.y+=this.accel.y*t;
+ pointer=pointer.setLength(15);
+ ctx.plotPoint(this.pos.x,this.pos.y);
+ 
+ ctx.lineWidth=1;
+ ctx.line(
+ this.pos.x,
+ this.pos.y,
+ this.pos.x+pointer.x,
+ this.pos.y+pointer.y
+ );
+ 
+ //Draw circle for sightRange
+ if(Cardinal.getDebugMode()){
+ ctx.font="15px Arial";
+ ctx.fillStyle="Black";
+ ctx.textAlign="center";
+ ctx.textBaseline="middle";
+ ctx.fillText(this.getId(),this.pos.x,this.pos.y);
+ ctx.lineWidth=0.3;
+ ctx.strokeStyle=this.flock.color;
+ ctx.circle(this.pos.x,this.pos.y,this.getSightRange(),false);
+ }
+ };
+ 
+ 
+ self.obstacles=[];
+ 
+ function Obstacle(x,y,r){
+ this.pos=new vec(x,y);
+ this.radius=r;
+ };
+ 
+ Obstacle.prototype.draw=function(){
+ ctx.fillStyle="darkblue";
+ ctx.circle(this.pos.x,this.pos.y,this.radius,true);
+ }
+ 
+ Obstacle.prototype.checkColl=function(x,y){
+ 
+ var cPos=new vec(x,y);
+ var dist=vec.sub(cPos,this.pos);
+ 
+ if(vec.dotP(dist,dist)<=this.radius*this.radius){
+ //ctx.fillStyle="Red";
+ //ctx.plotPoint(x,y);
+ return true;
+ }
+ return false;
+ 
+ };
+ 
+ self.addObstacles=function(numObs){
+ 
+ for(var i=0;i<numObs;i++){
+ var x=Math.round(Math.random()*800);
+ var y=Math.round(Math.random()*800);
+ var r=Math.round(Math.random()*30)+15;
+ 
+ self.obstacles.push(new Obstacle(x,y,r));
+ }
+ 
+ };
+ 
+ self.obstacles.push(new Obstacle(0,0,30));
+ self.obstacles.push(new Obstacle(800,0,30));
+ self.obstacles.push(new Obstacle(0,800,30));
+ self.obstacles.push(new Obstacle(800,800,30));
+ 
+ self.drawObstacles=function(){
+ 
+ for(var i=0; i<self.obstacles.length; i++){
+ self.obstacles[i].draw();
+ }
+ 
+ };
+ 
+ var boidSpeeds={
+ speed: 10,
+ turnSpeed: 10
+ };
+ 
+ //jumppoint
+ self.createFlock=function(numBoids,color,powerLevel,baseSight,baseSpeed,baseTurnSpeed){
+ 
+ var flock=new Flock(numBoids,color,powerLevel,baseSight,baseSpeed,baseTurnSpeed);
+ 
+ return flock;
+ };
+ 
+ self.updateFlocks=function(){
+ var t;
+ for(var i=0;i<self.flocks.length;i++){
+ try{
+ self.flocks[i].update();
+ }catch(error){
+ if(error.message==="dead"){
+ t=self.flocks[0];
+ self.flocks[0]=self.flocks[i];
+ self.flocks[i]=t;
+ self.flocks.shift();
+ log("removed flock");
+ }
+ else{
+ throw error;
+ }
+ }
+ }
+ };
+ 
+ self.moveFlocks=function(){
+ 
+ for(var i=0;i<self.flocks.length;i++){
+ if(self.flocks[i].length!==0){
+ self.flocks[i].move();
+ }
+ }
+ 
+ };
+ 
+ return self;
+ })();
+ 
+ 
+ var Game=(function(){
+ 
+ var self={
+ paused: false,
+ cycle: -1,
+ fps: 30,
+ };
+ 
+ self.start=function(){
+ log("started!");
+ };
+ 
+ self.pause=function(){
+ this.paused=true;
+ };
+ var count=0;
+ self.timeDelta=3;
+ 
+ self.renderScene=function(){
+ 
+ if(self.paused || self.cycles===0){
+ return;
+ }
+ //log("===================UPDATE CYCLE");
+ 
+ if(self.cycles>0)
+ {self.cycles--;}
+ 
+ 
+ 
+ ctx.background("White")
+ ctx.strokeRect(0,0,800,800);
+ 
+ if(Cardinal.getDebugMode()){
+ CellGrid.draw();
+ }
+ 
+ if(Flocker.flocks.length===0){
+ ctx.font="60px Arial";
+ ctx.fillText("ALL BOIDS ELIMINATED",400,400);
+ }
+ else{
+ this.viewX=Flocker.flocks[0].members[0].pos.x-400;
+ this.viewY=Flocker.flocks[0].members[0].pos.y-400;
+ 
+ Flocker.drawObstacles();
+ Flocker.moveFlocks();
+ count++;
+ if(count>=self.timeDelta){
+ count=0;
+ self.update();
+ }
+ 
+ }
+ 
+ ctx.fillStyle="Black";
+ };
+ 
+ self.deltaTime=(1/self.fps);
+ 
+ self.viewX=0;
+ self.viewY=0;
+ 
+ self.update=function(){
+ Flocker.updateFlocks();
+ };
+ 
+ return self;
+ })();
+ Flocker.addObstacles(8);
+ Flocker.createFlock(
+ 10,"red","fire",60,
+ 5,5
+ );
+ 
+ Flocker.createFlock(
+ 20,"cyan","ice",100,
+ 12,12
+ );
+ 
+ Flocker.createFlock(
+ 10,"limeGreen","acid",200,
+ 20,20
+ );
+ 
+ Cardinal.addCommand("spawn",function(p){
+ 
+ switch(p[0]){
+ 
+ case "red":{
+ Flocker.createFlock(
+ 10,"red","fire",60,
+ 5,5
+ );
+ break;
+ }
+ 
+ case "cyan":{
+ Flocker.createFlock(
+ 20,"cyan","ice",100,
+ 12,12
+ );
+ break;
+ }
+ 
+ case "green":{
+ Flocker.createFlock(
+ 10,"limeGreen","acid",200,
+ 20,20
+ );
+ break;
+ }
+ 
+ case "purple":{
+ Flocker.createFlock(
+ 2,"purple","shadow",220,
+ 25,90
+ );
+ break;
+ }
+ 
+ case "all":{
+ 
+ Flocker.createFlock(
+ 10,"red","fire",60,
+ 5,5
+ );
+ 
+ Flocker.createFlock(
+ 20,"cyan","ice",100,
+ 12,12
+ );
+ 
+ Flocker.createFlock(
+ 10,"limeGreen","acid",200,
+ 20,20
+ );
+ break;
+ }
+ 
+ default:{
+ var f=Flocker.createFlock(
+ +p[2],p[0],+p[1],100,
+ 12,12
+ );
+ f.powerLevel=(+p[3])?+p[3]:0;
+ }
+ }
+ 
+ });
+ 
+ //Game.cycles=50;
+ Game.start();
+ 
+ setInterval(Game.renderScene,Game.deltaTime*1000);
+ 
+ </script>
+ 
+ </body>
+ 
+ </html>

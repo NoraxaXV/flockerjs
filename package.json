@@ -5,5 +5,14 @@
   "main": "index.js",
   "author": "Noraxa XV",
   "license": "MIT",
-  "private": false
+  "private": false,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vite": "^5.3.1"
+  }
 }
