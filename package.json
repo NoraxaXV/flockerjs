@@ -1,0 +1,9 @@
+{
+  "name": "flockerjs",
+  "version": "1.0.0",
+  "description": "flocking and eating simulator",
+  "main": "index.js",
+  "author": "Noraxa XV",
+  "license": "MIT",
+  "private": false
+}
