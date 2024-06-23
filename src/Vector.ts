@@ -93,8 +93,9 @@ export default class Vector {
 
     /** Returns the length of a Vector */
     getLength(): number {
-        let x = Math.abs(this.x);
-        let y = Math.abs(this.y);
+        let x = Math.abs(this.x)
+        let y = Math.abs(this.y)
+        // Optimized to avoid doing sqrt as much as possible
         if (x === 0 && y === 0) {
             return 0;
         }
@@ -109,7 +110,7 @@ export default class Vector {
         }
         else {
             var d = (x * x) + (y * y);
-            return Math.sqrt(d);
+            return Math.sqrt(d)
         }
     }
 

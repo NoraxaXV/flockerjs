@@ -1,8 +1,7 @@
 import './style.css'
-import './Vector'
+import Vector from './Vector'
+import { Draw }  from './Draw'
+const draw = new Draw()
 
-const canvas = <HTMLCanvasElement> document.getElementById("canvas")
-const ctx = <CanvasRenderingContext2D> canvas.getContext("2d")
-
-ctx.strokeRect(1,1,canvas.width-1, canvas.height-1)
+draw.ctx.strokeRect(1,1, draw.canvas.width-1, draw.canvas.height-1)
 
