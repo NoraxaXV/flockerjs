@@ -1,4 +1,8 @@
-export class Draw {
+export interface Renderable {
+    draw(graphic: Graphics): void
+}
+
+export class Graphics {
     /** Native DOM canvas rendering context*/
     ctx: CanvasRenderingContext2D
     /** Canvas DOM element */
