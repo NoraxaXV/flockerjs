@@ -1,4 +1,5 @@
 import { randomizeValue } from "./Utility"
+import Vector from "./Vector"
 
 export class Simulation {
     flocks: Flock[] = []
@@ -89,6 +90,17 @@ class Boid {
     #cohese: number
     #sightRange: number
 
+    #numOfFriends: number = 0
+    #numOfEnemies: number = 0
+    #visibleFriends: Boid[] = []
+    #visibleEnemies: Boid[] = []
+    #reproduceTimer: number = 50
+    #maxHunger: number = 300
+    #hunger: number = this.#maxHunger / 6
+    #hungry: boolean = false
+    #starveTimer: number = this.#maxHunger / 3
+    #alive: boolean = true
+
     constructor(
         public flock: Flock,
         config: IBoidConfig,
@@ -108,6 +120,71 @@ class Boid {
     flockIt(): boolean {
         return false
     }
+
+    move(): void {
+
+    }
+
+    reproduceCycle(): void {
+
+    }
+
+    eat(): void {
+
+    }
+
+    checkForStarvation(): void {
+
+    }
+
+    findFood(): Vector {
+        return new Vector()
+   }
+
+    fleeEnemeies(): Vector {
+        return new Vector()
+    }
+
+    matchHeading(): Vector {
+        return new Vector()
+    }
+
+    steerToCenter(): Vector {
+        return new Vector()
+    }
+
+    buildVisibleList(): void {
+
+    }
+
+    addFriend(): void {
+
+    }
+
+    addEnemy(): void {
+
+    }
+
+    bindToWorld(): void {
+
+    }
+
+    avoidWalls(): Vector {
+        return new Vector()
+    }
+
+    /** Checks if a void is "visible" Returns -1 when the check fails, otherwise returns the distance. */
+    canISee(boid: Boid): number {
+
+    }
+
+    die(): void {
+
+    }
+
+    setPrey(prey: Boid, distance: number): void {
+
+    }
 }
 
 interface IFlockConfig {
@@ -122,4 +199,10 @@ interface IBoidConfig {
     baseSight?: number
     baseSpeed?: number
     baseTurnSpeed?: number
+}
+
+type Target {
+    boid: Boid
+    distance: number
+    index: number
 }
